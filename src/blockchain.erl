@@ -2949,16 +2949,16 @@ get_plausible_blocks(Itr, {ok, _Key, BinBlock}, Acc) ->
              end,
     get_plausible_blocks(Itr, rocksdb:iterator_move(Itr, next), NewAcc).
 
-run_gc_hooks(Blockchain, _Hash) ->
+run_gc_hooks(Blockchain, Hash) ->
     Ledger = blockchain:ledger(Blockchain),
     try
         ok = blockchain_ledger_v1:maybe_gc_pocs(Blockchain, Ledger),
 
         ok = blockchain_ledger_v1:maybe_gc_scs(Blockchain, Ledger),
 
-        ok = blockchain_ledger_v1:maybe_recalc_price(Blockchain, Ledger) %,
+        ok = blockchain_ledger_v1:maybe_recalc_price(Blockchain, Ledger),
 
-        %% ok = blockchain_ledger_v1:refresh_gateway_witnesses(Hash, Ledger)
+        ok = blockchain_ledger_v1:refresh_gateway_witnesses(Hash, Ledger)
     catch What:Why:Stack ->
             lager:warning("hooks failed ~p ~p ~s", [What, Why, lager:pr_stacktrace(Stack, {What, Why})]),
             {error, gc_hooks_failed}
