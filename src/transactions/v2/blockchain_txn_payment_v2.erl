@@ -370,15 +370,22 @@ memo_check(Txn, Ledger) ->
 
 -spec amount_check(Txn :: txn_payment_v2(), Ledger :: blockchain_ledger_v1:ledger()) -> boolean().
 amount_check(Txn, Ledger) ->
-    TotAmount = ?MODULE:total_amount(Txn, Ledger),
     Payments = ?MODULE:payments(Txn),
-    case blockchain:config(?allow_zero_amount, Ledger) of
-        {ok, false} ->
-            %% check that no more than one payment has a zero amount and only if max is true
-            has_non_zero_amounts(Payments) orelse has_single_max_payment(Payments);
+    case blockchain:config(?enable_balance_clearing, Ledger) of
+        {ok, true} ->
+            %% balance clearing txns should be mutually exclusive with allowing zero amount txns
+            %% or else we can't tell whether or not a payment with a 0 amount is one or the other;
+            %% no more than one payment has a 0 amount and only if `max' is `true'
+            has_single_max_payment(Payments);
         _ ->
-            %% if undefined or true, use the old check
-            (TotAmount >= 0)
+            case blockchain:config(?allow_zero_amount, Ledger) of
+                {ok, false} ->
+                    %% check that none of the payments have a zero amount
+                    has_non_zero_amounts(Payments);
+                _ ->
+                    %% if undefined or true, use the old check
+                    (?MODULE:total_amount(Txn, Ledger) >= 0)
+            end
     end.
 
 -spec has_unique_payees(Payments :: blockchain_payment_v2:payments()) -> boolean().
@@ -394,7 +401,7 @@ has_non_zero_amounts(Payments) ->
 -spec has_single_max_payment(Payments :: blockchain_payment_v2:payments()) -> boolean().
 has_single_max_payment(Payments) ->
     {MaxTrue, MaxFalse} = split_max_payment(Payments),
-    length(MaxTrue) == 1 andalso
+    length(MaxTrue) =< 1 andalso
         lists:all(fun(Payment) -> blockchain_payment_v2:amount(Payment) > 0 end, MaxFalse).
 
 -spec has_valid_memos(Payments :: blockchain_payment_v2:payments()) -> boolean().
@@ -419,8 +426,7 @@ has_valid_memos(Payments) ->
 -spec split_max_payment(Payments) -> {Payments, Payments} when
     Payments :: blockchain_payment_v2:payments().
 split_max_payment(Payments) ->
-    {MaxPayment, _OtherPayments} = SplitPayments =
-        SplitPayments = lists:partition(
+    {MaxPayment, _OtherPayments} = SplitPayments = lists:partition(
             fun(Payment) ->
                 blockchain_payment_v2:max(Payment) andalso
                     blockchain_payment_v2:is_valid_max(Payment)

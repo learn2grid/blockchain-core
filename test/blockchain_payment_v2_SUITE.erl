@@ -622,6 +622,8 @@ extra_vars(valid_memo_test) ->
     #{?max_payments => ?MAX_PAYMENTS, ?allow_zero_amount => false, ?allow_payment_v2_memos => true};
 extra_vars(negative_memo_test) ->
     #{?max_payments => ?MAX_PAYMENTS, ?allow_zero_amount => false, ?allow_payment_v2_memos => true};
+extra_vars(balance_clearing_test) ->
+    #{?max_payments => ?MAX_PAYMENTS, ?allow_zero_amount => false, ?enable_balance_clearing => true};
 extra_vars(_) ->
     #{?max_payments => ?MAX_PAYMENTS, ?allow_zero_amount => false}.
 
