@@ -101,7 +101,6 @@
 -record(state,
         {
          blockchain :: undefined | {no_genesis, blockchain:blockchain()} | blockchain:blockchain(),
-         swarm :: undefined | pid(),
          swarm_tid :: undefined | ets:tab(),
          sync_timer = make_ref() :: reference(),
          sync_ref = make_ref() :: reference(),
@@ -348,7 +347,6 @@ signed_metadata_fun() ->
 %% ------------------------------------------------------------------
 init(Args) ->
     lager:info("~p init with ~p", [?SERVER, Args]),
-    Swarm = blockchain_swarm:swarm(),
     SwarmTID = blockchain_swarm:tid(),
     %% allows the default interface to be to overridden, for example tests work better running with just 127.0.0.1 rather than running on all interfaces
     ListenInterface = application:get_env(blockchain, listen_interface, "0.0.0.0"),
@@ -385,7 +383,7 @@ init(Args) ->
 
     true = lists:all(fun(E) -> E == ok end,
                      [ libp2p_swarm:listen(SwarmTID, Addr) || Addr <- ListenAddrs ]),
-    NewState = #state{swarm = Swarm, swarm_tid = SwarmTID, blockchain = Blockchain,
+    NewState = #state{swarm_tid = SwarmTID, blockchain = Blockchain,
                 gossip_ref = Ref},
     {Mode, Info} = get_sync_mode(NewState),
     SnapshotTimerRef = schedule_snapshot_timer(),
