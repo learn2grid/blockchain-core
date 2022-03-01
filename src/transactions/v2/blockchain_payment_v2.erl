@@ -105,8 +105,8 @@ is_valid_max(_) -> false.
 
 print(undefined) ->
     <<"type=payment undefined">>;
-print(#payment_pb{payee=Payee, amount=Amount, memo=Memo}) ->
-    io_lib:format("type=payment payee: ~p amount: ~p, memo: ~p", [?TO_B58(Payee), Amount, Memo]).
+print(#payment_pb{payee=Payee, amount=Amount, memo=Memo, max=Max}) ->
+    io_lib:format("type=payment payee: ~p amount: ~p, memo: ~p, max: ~p", [?TO_B58(Payee), Amount, Memo, Max]).
 
 json_type() ->
     undefined.
@@ -116,7 +116,8 @@ to_json(Payment, _Opts) ->
     #{
       payee => ?BIN_TO_B58(payee(Payment)),
       amount => amount(Payment),
-      memo => ?MAYBE_FN(fun (V) -> base64:encode(<<(V):64/unsigned-little-integer>>) end, memo(Payment))
+      memo => ?MAYBE_FN(fun (V) -> base64:encode(<<(V):64/unsigned-little-integer>>) end, memo(Payment)),
+      max => ?MODULE:max(Payment)
      }.
 
 %% ------------------------------------------------------------------
@@ -152,6 +153,6 @@ to_json_test() ->
     Payment = new(<<"payee">>, 100),
     Json = to_json(Payment, []),
     ?assert(lists:all(fun(K) -> maps:is_key(K, Json) end,
-                      [payee, amount])).
+                      [payee, amount, memo, max])).
 
 -endif.
