@@ -15,6 +15,7 @@
          self_payment_test/1,
          max_payments_test/1,
          balance_clearing_test/1,
+         invalid_balance_clearing_test/1,
          balance_clearing_disabled_test/1,
          signature_test/1,
          zero_amount_test/1,
@@ -37,6 +38,7 @@ all() ->
      self_payment_test,
      max_payments_test,
      balance_clearing_test,
+     invalid_balance_clearing_test,
      balance_clearing_disabled_test,
      signature_test,
      zero_amount_test,
@@ -362,6 +364,47 @@ balance_clearing_test(Config) ->
 
     {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
     ?assertEqual(0, blockchain_ledger_entry_v1:balance(PayerEntry)),
+    ok.
+
+invalid_balance_clearing_test(Config) ->
+    ConsensusMembers = ?config(consensus_members, Config),
+    Balance = ?config(balance, Config),
+    Chain = ?config(chain, Config),
+
+    %% Test a payment transaction, add a block and check balances
+    [_, {Payer, {_, PayerPrivKey, _}}, {Recipient2, _}, {Recipient3, _} | _] = ConsensusMembers,
+
+    %% Create a payment to payee1
+    Recipient1 = blockchain_swarm:pubkey_bin(),
+    Amount1 = 2000,
+    Payment1 = blockchain_payment_v2:new(Recipient1, Amount1),
+
+    %% Create a payment to payee2
+    Payment2 = blockchain_payment_v2:new(Recipient2, max),
+
+    %% Create a payment to payee3
+    Amount3 = 3000,
+    Payment3 = blockchain_payment_v2:new(Recipient3, Amount3),
+
+    Tx = blockchain_txn_payment_v2:new(Payer, [Payment1, Payment2, Payment3], 1),
+    SigFun = libp2p_crypto:mk_sig_fun(PayerPrivKey),
+    SignedTx = blockchain_txn_payment_v2:sign(Tx, SigFun),
+
+    ct:pal("~s", [blockchain_txn:print(SignedTx)]),
+
+    {error, {invalid_txns, [{BadTx, invalid_transaction}]}} = test_utils:create_block(ConsensusMembers, [SignedTx]),
+    ?assertEqual(SignedTx, BadTx),
+
+    Ledger = blockchain:ledger(Chain),
+
+    {ok, RecipientEntry1} = blockchain_ledger_v1:find_entry(Recipient1, Ledger),
+    ?assertEqual(Balance, blockchain_ledger_entry_v1:balance(RecipientEntry1)),
+
+    {ok, RecipientEntry2} = blockchain_ledger_v1:find_entry(Recipient2, Ledger),
+    ?assertEqual(Balance, blockchain_ledger_entry_v1:balance(RecipientEntry2)),
+
+    {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
+    ?assertEqual(Balance, blockchain_ledger_entry_v1:balance(PayerEntry)),
     ok.
 
 balance_clearing_disabled_test(Config) ->
