@@ -1126,6 +1126,13 @@ validate_var(?allow_zero_amount, Value) ->
         _ -> throw({error, {invalid_allow_zero_amount, Value}})
     end;
 
+validate_var(?enable_balance_clearing, Value) ->
+    case Value of
+        true -> ok;
+        false -> ok;
+        _ -> throw({error, {invalid_enable_balance_clearing, Value}})
+    end;
+
 %% general txn vars
 
 validate_var(?txn_field_validation_version, Value) ->

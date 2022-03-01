@@ -15,6 +15,7 @@
          self_payment_test/1,
          max_payments_test/1,
          balance_clearing_test/1,
+         balance_clearing_disabled_test/1,
          signature_test/1,
          zero_amount_test/1,
          negative_amount_test/1,
@@ -36,6 +37,7 @@ all() ->
      self_payment_test,
      max_payments_test,
      balance_clearing_test,
+     balance_clearing_disabled_test,
      signature_test,
      zero_amount_test,
      negative_amount_test,
@@ -342,7 +344,7 @@ balance_clearing_test(Config) ->
     ct:pal("~s", [blockchain_txn:print(SignedTx)]),
 
     {ok, Block} = test_utils:create_block(ConsensusMembers, [SignedTx]),
-    _ = blockchain_gossip_handler:add_block(Block, Chain, self(), blockchain_swarm:swarm()),
+    _ = blockchain_gossip_handler:add_block(Block, Chain, self(), blockchain_swarm:tid()),
 
     ?assertEqual({ok, blockchain_block:hash_block(Block)}, blockchain:head_hash(Chain)),
     ?assertEqual({ok, Block}, blockchain:head_block(Chain)),
@@ -360,6 +362,30 @@ balance_clearing_test(Config) ->
 
     {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
     ?assertEqual(0, blockchain_ledger_entry_v1:balance(PayerEntry)),
+    ok.
+
+balance_clearing_disabled_test(Config) ->
+    ConsensusMembers = ?config(consensus_members, Config),
+
+    %% Test a payment transaction, add a block and check balances
+    [_, {Payer, {_, PayerPrivKey, _}}, {Recipient2, _} | _] = ConsensusMembers,
+
+    %% Create a valid payment to payee1
+    Recipient1 = blockchain_swarm:pubkey_bin(),
+    Amount = 2000,
+    Payment1 = blockchain_payment_v2:new(Recipient1, Amount),
+
+    %% Create an invalid max/clearing payment
+    Payment2 = blockchain_payment_v2:new(Recipient2, max),
+
+    Tx = blockchain_txn_payment_v2:new(Payer, [Payment1, Payment2], 1),
+    SigFun = libp2p_crypto:mk_sig_fun(PayerPrivKey),
+    SignedTx = blockchain_txn_payment_v2:sign(Tx, SigFun),
+
+    ct:pal("~s", [blockchain_txn:print(SignedTx)]),
+
+    {error, {invalid_txns, [{BadTx, invalid_transaction}]}} = test_utils:create_block(ConsensusMembers, [SignedTx]),
+    ?assertEqual(SignedTx, BadTx),
     ok.
 
 signature_test(Config) ->
