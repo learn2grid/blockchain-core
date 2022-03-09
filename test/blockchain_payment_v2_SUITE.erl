@@ -329,41 +329,86 @@ balance_clearing_test(Config) ->
     Chain = ?config(chain, Config),
 
     %% Test a payment transaction, add a block and check balances
-    [_, {Payer, {_, PayerPrivKey, _}}, {Recipient2, _} | _] = ConsensusMembers,
+    [_, {Payer, {_, PayerPrivKey, _}}, {Recipient2, {_, Recipient2PrivKey, _}}, {Recipient3, _} | _] = ConsensusMembers,
 
     %% Create a payment to payee1
     Recipient1 = blockchain_swarm:pubkey_bin(),
-    Amount1 = 2000,
-    Payment1 = blockchain_payment_v2:new(Recipient1, Amount1),
+    Amount = 2000,
+    Payment1 = blockchain_payment_v2:new(Recipient1, Amount),
 
     %% Create a payment to payee2
     Payment2 = blockchain_payment_v2:new(Recipient2, max),
 
-    Tx = blockchain_txn_payment_v2:new(Payer, [Payment1, Payment2], 1),
-    SigFun = libp2p_crypto:mk_sig_fun(PayerPrivKey),
-    SignedTx = blockchain_txn_payment_v2:sign(Tx, SigFun),
+    %% Submit a txn with mixed regular and balance-clearing `max' payments
+    Tx1 = blockchain_txn_payment_v2:new(Payer, [Payment1, Payment2], 1),
+    SigFun1 = libp2p_crypto:mk_sig_fun(PayerPrivKey),
+    SignedTx1 = blockchain_txn_payment_v2:sign(Tx1, SigFun1),
 
-    ct:pal("~s", [blockchain_txn:print(SignedTx)]),
+    ct:pal("~s", [blockchain_txn:print(SignedTx1)]),
 
-    {ok, Block} = test_utils:create_block(ConsensusMembers, [SignedTx]),
+    {ok, Block} = test_utils:create_block(ConsensusMembers, [SignedTx1]),
     _ = blockchain_gossip_handler:add_block(Block, Chain, self(), blockchain_swarm:tid()),
 
     ?assertEqual({ok, blockchain_block:hash_block(Block)}, blockchain:head_hash(Chain)),
     ?assertEqual({ok, Block}, blockchain:head_block(Chain)),
     ?assertEqual({ok, 2}, blockchain:height(Chain)),
-
     ?assertEqual({ok, Block}, blockchain:get_block(2, Chain)),
 
     Ledger = blockchain:ledger(Chain),
 
     {ok, RecipientEntry1} = blockchain_ledger_v1:find_entry(Recipient1, Ledger),
-    ?assertEqual(Balance + Amount1, blockchain_ledger_entry_v1:balance(RecipientEntry1)),
+    ?assertEqual(Balance + Amount, blockchain_ledger_entry_v1:balance(RecipientEntry1)),
 
-    {ok, RecipientEntry2} = blockchain_ledger_v1:find_entry(Recipient2, Ledger),
-    ?assertEqual(Balance + (Balance - Amount1), blockchain_ledger_entry_v1:balance(RecipientEntry2)),
+    {ok, RecipientEntry2_1} = blockchain_ledger_v1:find_entry(Recipient2, Ledger),
+    ?assertEqual(Balance + (Balance - Amount), blockchain_ledger_entry_v1:balance(RecipientEntry2_1)),
 
     {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
     ?assertEqual(0, blockchain_ledger_entry_v1:balance(PayerEntry)),
+
+    %% Normal txn with an explicit amount is still processed normally
+    Payment3 = blockchain_payment_v2:new(Recipient3, Amount),
+
+    Tx2 = blockchain_txn_payment_v2:new(Recipient2, [Payment3], 1),
+    SigFun2 = libp2p_crypto:mk_sig_fun(Recipient2PrivKey),
+    SignedTx2 = blockchain_txn_payment_v2:sign(Tx2, SigFun2),
+
+    {ok, Block2} = test_utils:create_block(ConsensusMembers, [SignedTx2]),
+    _ = blockchain_gossip_handler:add_block(Block2, Chain, self(), blockchain_swarm:tid()),
+
+    ?assertEqual({ok, blockchain_block:hash_block(Block2)}, blockchain:head_hash(Chain)),
+    ?assertEqual({ok, Block2}, blockchain:head_block(Chain)),
+    ?assertEqual({ok, 3}, blockchain:height(Chain)),
+    ?assertEqual({ok, Block2}, blockchain:get_block(3, Chain)),
+
+    Ledger2 = blockchain:ledger(Chain),
+
+    {ok, RecipientEntry2_2} = blockchain_ledger_v1:find_entry(Recipient2, Ledger2),
+    ?assertEqual((Balance + (Balance - Amount)) - Amount, blockchain_ledger_entry_v1:balance(RecipientEntry2_2)),
+
+    {ok, RecipientEntry3_1} = blockchain_ledger_v1:find_entry(Recipient3, Ledger2),
+    ?assertEqual(Balance + Amount, blockchain_ledger_entry_v1:balance(RecipientEntry3_1)),
+
+    %% Balance-clearing `max' txn processed successfully in isolation
+    Payment4 = blockchain_payment_v2:new(Recipient3, max),
+
+    Tx3 = blockchain_txn_payment_v2:new(Recipient2, [Payment4], 2),
+    SignedTx3 = blockchain_txn_payment_v2:sign(Tx3, SigFun2),
+
+    {ok, Block3} = test_utils:create_block(ConsensusMembers, [SignedTx3]),
+    _ = blockchain_gossip_handler:add_block(Block3, Chain, self(), blockchain_swarm:tid()),
+
+    ?assertEqual({ok, blockchain_block:hash_block(Block3)}, blockchain:head_hash(Chain)),
+    ?assertEqual({ok, Block3}, blockchain:head_block(Chain)),
+    ?assertEqual({ok, 4}, blockchain:height(Chain)),
+    ?assertEqual({ok, Block3}, blockchain:get_block(4, Chain)),
+
+    Ledger3 = blockchain:ledger(Chain),
+
+    {ok, RecipientEntry2_3} = blockchain_ledger_v1:find_entry(Recipient2, Ledger3),
+    ?assertEqual(0, blockchain_ledger_entry_v1:balance(RecipientEntry2_3)),
+
+    {ok, RecipientEntry3_2} = blockchain_ledger_v1:find_entry(Recipient3, Ledger3),
+    ?assertEqual(Balance + Balance + (Balance - Amount), blockchain_ledger_entry_v1:balance(RecipientEntry3_2)),
     ok.
 
 invalid_balance_clearing_test(Config) ->

@@ -79,17 +79,10 @@ payees(Txn) ->
     [blockchain_payment_v2:payee(Payment) || Payment <- ?MODULE:payments(Txn)].
 
 -spec amounts(txn_payment_v2(), blockchain_ledger_v1:ledger()) -> [pos_integer()].
-amounts(#blockchain_txn_payment_v2_pb{payer=Payer, fee=Fee}=Txn, Ledger) ->
-    {MaxPayment, SpecifiedPayments} = split_max_payment(?MODULE:payments(Txn)),
-    SpecifiedAmounts = [blockchain_payment_v2:amount(Payment) || Payment <- SpecifiedPayments],
-    case length(MaxPayment) == 1 of
-        true ->
-            {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
-            Balance = blockchain_ledger_entry_v1:balance(PayerEntry),
-            MaxPaymentAmount = Balance - lists:sum(SpecifiedAmounts) - Fee,
-            SpecifiedAmounts ++ [MaxPaymentAmount];
-        false ->
-            SpecifiedAmounts
+amounts(Txn, Ledger) ->
+    case split_payment_amounts(Txn, Ledger) of
+        {undefined, Payments} -> Payments;
+        {MaxPayment, Payments} -> [MaxPayment | Payments]
     end.
 
 -spec total_amount(txn_payment_v2(), blockchain_ledger_v1:ledger()) -> pos_integer().
@@ -294,9 +287,7 @@ do_is_valid_checks(Txn, Chain, MaxPayments) ->
                                     case LengthPayments > MaxPayments of
                                         %% Check that we don't exceed max payments
                                         true ->
-                                            {error,
-                                                {exceeded_max_payments,
-                                                    {LengthPayments, MaxPayments}}};
+                                            {error, {exceeded_max_payments, {LengthPayments, MaxPayments}}};
                                         false ->
                                             case lists:member(Payer, ?MODULE:payees(Txn)) of
                                                 false ->
@@ -305,9 +296,7 @@ do_is_valid_checks(Txn, Chain, MaxPayments) ->
                                                         false ->
                                                             {error, duplicate_payees};
                                                         true ->
-                                                            AmountCheck = amount_check(
-                                                                Txn, Ledger
-                                                            ),
+                                                            AmountCheck = amount_check(Txn, Ledger),
                                                             MemoCheck = memo_check(Txn, Ledger),
 
                                                             case {AmountCheck, MemoCheck} of
@@ -376,7 +365,14 @@ amount_check(Txn, Ledger) ->
             %% balance clearing txns should be mutually exclusive with allowing zero amount txns
             %% or else we can't tell whether or not a payment with a 0 amount is one or the other;
             %% no more than one payment has a 0 amount and only if `max' is `true'
-            has_single_max_payment(Payments);
+            case has_single_max_payment(Payments) of
+                true ->
+                    case split_payment_amounts(Txn, Ledger) of
+                        {MaxPmt, _OtherPmts} when MaxPmt > 0 -> true;
+                        _ -> false
+                    end;
+                false -> false
+            end;
         _ ->
             case blockchain:config(?allow_zero_amount, Ledger) of
                 {ok, false} ->
@@ -384,8 +380,22 @@ amount_check(Txn, Ledger) ->
                     has_non_zero_amounts(Payments);
                 _ ->
                     %% if undefined or true, use the old check
-                    (?MODULE:total_amount(Txn, Ledger) >= 0)
+                    ?MODULE:total_amount(Txn, Ledger) >= 0
             end
+    end.
+
+-spec split_payment_amounts(Txn :: txn_payment_v2(), Ledger :: blockchain_ledger_v1:ledger()) -> {pos_integer() | undefined, [pos_integer()]}.
+split_payment_amounts(#blockchain_txn_payment_v2_pb{payer=Payer, fee=Fee}=Txn, Ledger) ->
+    {MaxPayment, SpecifiedPayments} = split_max_payment(?MODULE:payments(Txn)),
+    SpecifiedAmounts = [blockchain_payment_v2:amount(Payment) || Payment <- SpecifiedPayments],
+    case length(MaxPayment) == 1 of
+        true ->
+            {ok, PayerEntry} = blockchain_ledger_v1:find_entry(Payer, Ledger),
+            Balance = blockchain_ledger_entry_v1:balance(PayerEntry),
+            MaxPaymentAmount = Balance - lists:sum(SpecifiedAmounts) - Fee,
+            {MaxPaymentAmount, SpecifiedAmounts};
+        false ->
+            {undefined, SpecifiedAmounts}
     end.
 
 -spec has_unique_payees(Payments :: blockchain_payment_v2:payments()) -> boolean().
