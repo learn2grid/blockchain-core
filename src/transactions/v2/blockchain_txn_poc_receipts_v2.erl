@@ -434,7 +434,7 @@ assign_alpha_beta(HasContinued, Receipt, Witnesses) ->
             %% path broke, receipt, no witnesses
             %% likely the next hop broke the path
             case blockchain_poc_receipt_v1:origin(Receipt) of
-                p2p ->
+                grpc ->
                     %% you really did nothing here other than be online
                     {{0, 0}, false};
                 radio ->
@@ -481,7 +481,7 @@ allocate_alpha_beta(HasContinued, Element, Receipt, Witnesses, Ledger) ->
         {false, Receipt, []} when Receipt /= undefined ->
             %% path broke, receipt, no witnesses
             case blockchain_poc_receipt_v1:origin(Receipt) of
-                p2p ->
+                grpc ->
                     %% you really did nothing here other than be online
                     {{0, 0}, false};
                 radio ->
@@ -818,7 +818,7 @@ validate(_POCVersion, Txn, Path, LayerData, LayerHashes, OldLedger) ->
                                                IsFirst = Elem == hd(?MODULE:path(Txn)),
                                                Receipt = blockchain_poc_path_element_v1:receipt(Elem),
                                                ExpectedOrigin = case IsFirst of
-                                                                    true -> p2p;
+                                                                    true -> grpc;
                                                                     false -> radio
                                                                 end,
                                                %% check the receipt
@@ -1466,7 +1466,7 @@ delta_test() ->
     OnionKeyHash = <<"onion_key_hash">>,
     BlockHash = <<"blockhash">>,
 
-    Receipt = blockchain_poc_receipt_v1:new(<<"r">>, 10, 10, <<"data">>, p2p, 1.2, 915.2, 2, <<"dr">>),
+    Receipt = blockchain_poc_receipt_v1:new(<<"r">>, 10, 10, <<"data">>, grpc, 1.2, 915.2, 2, <<"dr">>),
 
     W1 = blockchain_poc_witness_v1:new(<<"w1">>, 10, 10, <<"ph">>, 1.2, 915.2, 2, <<"dr">>),
     W2 = blockchain_poc_witness_v1:new(<<"w2">>, 10, 10, <<"ph">>, 1.2, 915.2, 2, <<"dr">>),
@@ -1504,7 +1504,7 @@ duplicate_delta_test() ->
                                    <<"baz">>,
                                    [{blockchain_poc_path_element_v1_pb,<<"first">>,
                                                                        {blockchain_poc_receipt_v1_pb,<<"a">>,
-                                                                                                     1559953989978238892,0,<<"§Úi½">>,p2p,
+                                                                                                     1559953989978238892,0,<<"§Úi½">>,grpc,
                                                                                                      <<"b">>, 10.1, 912.4},
                                                                        []},
                                     {blockchain_poc_path_element_v1_pb,<<"second">>,
@@ -1546,7 +1546,7 @@ to_json_test() ->
     OnionKeyHash = <<"onion_key_hash">>,
     BlockHash = <<"blockhash">>,
 
-    Receipt = blockchain_poc_receipt_v1:new(<<"r">>, 10, 10, <<"data">>, p2p, 1.2, 915.2, 2, <<"dr">>),
+    Receipt = blockchain_poc_receipt_v1:new(<<"r">>, 10, 10, <<"data">>, grpc, 1.2, 915.2, 2, <<"dr">>),
 
     W1 = blockchain_poc_witness_v1:new(<<"w1">>, 10, 10, <<"ph">>, 1.2, 915.2, 2, <<"dr">>),
     W2 = blockchain_poc_witness_v1:new(<<"w2">>, 10, 10, <<"ph">>, 1.2, 915.2, 2, <<"dr">>),

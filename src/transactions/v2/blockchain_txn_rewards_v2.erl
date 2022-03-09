@@ -1095,7 +1095,8 @@ poc_challengees_rewards_(#{poc_version := Version}=Vars,
                                    maps:put(Challengee, I+1, Acc0)
                            end,
                     poc_challengees_rewards_(Vars, Path, StaticPath, Txn, Chain, Ledger, false, VarMap, Acc1);
-                p2p ->
+                X when X == p2p;
+                       X == grpc ->
                     %% if there are legitimate witnesses or the path continues
                     %% the challengee did their job
                     Acc1 = case
