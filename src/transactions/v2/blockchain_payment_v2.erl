@@ -126,8 +126,10 @@ to_json(Payment, _Opts) ->
 -ifdef(TEST).
 
 new_test() ->
-    Payment = #payment_pb{payee= <<"payee">>, amount= 100},
-    ?assertEqual(Payment, new(<<"payee">>, 100)).
+    Payment1 = #payment_pb{payee= <<"payee">>, amount= 100},
+    ?assertEqual(Payment1, new(<<"payee">>, 100)),
+    Payment2 = #payment_pb{payee= <<"payee">>, max=true},
+    ?assertEqual(Payment2, new(<<"payee">>, max)).
 
 payee_test() ->
     Payment = new(<<"payee">>, 100),
@@ -136,6 +138,12 @@ payee_test() ->
 amount_test() ->
     Payment = new(<<"payee">>, 100),
     ?assertEqual(100, ?MODULE:amount(Payment)).
+
+is_valid_memo_test() ->
+    Payment1 = new(<<"payee">>, 100, 255),
+    ?assertEqual(true, ?MODULE:is_valid_memo(Payment1)),
+    Payment2 = new(<<"payee">>, 100, trunc(math:pow(7, 250))),
+    ?assertEqual(false, ?MODULE:is_valid_memo(Payment2)).
 
 max_test() ->
     Payment1 = new(<<"payee">>, 100),
