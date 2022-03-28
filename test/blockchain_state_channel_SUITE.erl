@@ -131,14 +131,16 @@ init_per_testcase(Test, Config) ->
        blockchain_state_channels_handler,
        blockchain_state_channels_server,
        blockchain_state_channels_worker,
-       blockchain_txn_state_channel_close_v1]
+       blockchain_txn_state_channel_close_v1,
+       blockchain_state_channel_sup]
      ),
     debug_modules_for_node(
       GatewayNode1,
       Dir ++ "sc_client_1.log",
       [blockchain_state_channel_v1,
        blockchain_state_channels_client,
-       blockchain_state_channels_handler]
+       blockchain_state_channels_handler,
+       blockchain_state_channel_sup]
      ),
 
     %% accumulate the address of each node
@@ -169,7 +171,10 @@ init_per_testcase(Test, Config) ->
                                            Swarm = ct_rpc:call(Node, blockchain_swarm, swarm, [], 500),
                                            CRes = ct_rpc:call(Node, libp2p_swarm, connect, [Swarm, libp2p_crypto:pubkey_bin_to_p2p(AddrToConnectToo)], 500),
                                            ct:pal("Connecting ~p to ~p: ~p", [Node, AddrToConnectToo, CRes]),
-                                           false
+                                           case CRes of
+                                               {ok, _} -> true;
+                                               _ -> false
+                                            end
                                    end
                                catch _C:_E ->
                                        false
@@ -327,6 +332,7 @@ full_test(Config) ->
     %% Sending 1 packet
     DevNonce0 = crypto:strong_rand_bytes(2),
     Packet0 = blockchain_ct_utils:join_packet(?APPKEY, DevNonce0, 0.0),
+    ct:pal("Gateway node1 ~p sending ~p", [GatewayNode1, Packet0]),
     ok = ct_rpc:call(GatewayNode1, blockchain_state_channels_client, packet, [Packet0, [], 'US915']),
 
     %% Checking state channel on server/client
@@ -335,7 +341,7 @@ full_test(Config) ->
     %% Sending another packet
     DevNonce1 = crypto:strong_rand_bytes(2),
     Packet1 = blockchain_ct_utils:join_packet(?APPKEY, DevNonce1, 0.0),
-    ct:pal("Gateway node1 ~p", [GatewayNode1]),
+    ct:pal("Gateway node1 ~p sending ~p", [GatewayNode1, Packet1]),
     ok = ct_rpc:call(GatewayNode1, blockchain_state_channels_client, packet, [Packet1, [], 'US915']),
 
     %% Checking state channel on server/client
