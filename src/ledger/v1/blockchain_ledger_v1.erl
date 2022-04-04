@@ -2098,7 +2098,7 @@ process_poc_keys(Block, BlockHeight, BlockHash, Ledger) ->
             lists:foreach(
                 fun({ChallengerAddr, OnionKeyHash}) ->
                     %% the published poc key is a hash of the public key, aka the onion key hash
-                    lager:info("saving public poc data for poc key ~p and challenger ~p at blockheight ~p", [OnionKeyHash, ChallengerAddr, BlockHeight]),
+                    lager:debug("saving public poc data for poc key ~p and challenger ~p at blockheight ~p", [OnionKeyHash, ChallengerAddr, BlockHeight]),
                     catch ok = blockchain_ledger_v1:save_public_poc(OnionKeyHash, ChallengerAddr, BlockHash, BlockHeight, Ledger)
                 end,
                 BlockPocEphemeralKeys);
@@ -2177,11 +2177,11 @@ active_public_pocs(Ledger) ->
                   POC = blockchain_ledger_poc_v3:deserialize(PoCBin),
                     [POC | Acc]
               catch _:_ ->
-                  lager:info("could not decode poc, possible wrong version, ignoring: ~p", [PoCBin]),
+                  lager:debug("could not decode poc, possible wrong version, ignoring: ~p", [PoCBin]),
                   Acc
               end;
           ({_KeyHash, _NonV3PoCBin}, Acc) ->
-              lager:info("could not decode poc, possible wrong version, ignoring: ~p", [_NonV3PoCBin]),
+              lager:warning("could not decode poc, possible wrong version, ignoring: ~p", [_NonV3PoCBin]),
               Acc
       end,
       []
@@ -2253,7 +2253,7 @@ maybe_gc_pocs(_Chain, Ledger, validator) ->
                       Acc;
 
                   ({KeyHash, _NonV3PoCBin} = _PoC, Acc) ->
-                      lager:info("non v3 poc, deleting: ~p", [_PoC]),
+                      lager:debug("non v3 poc, deleting: ~p", [_PoC]),
                       cache_delete(Ledger, POCsCF, KeyHash),
                       Acc
               end,
@@ -4715,7 +4715,6 @@ maybe_gc_h3dex(Ledger) ->
             %% from the current block (which are sorted by *challenger* and GC the
             %% hexes the *challengee* is in.
             {ok, Height} = current_height(Ledger),
-            lager:info("*** height : ~p", [Height]),
             case get_block(Height, Ledger)  of
                 {error, _} ->
                     ok;
@@ -4724,6 +4723,7 @@ maybe_gc_h3dex(Ledger) ->
                     RandState = blockchain_utils:rand_from_hash(BlockHash),
                     RequestFilter = fun(T) ->
                                             blockchain_txn:type(T) == blockchain_txn_poc_receipts_v1
+                                            orelse blockchain_txn:type(T) == blockchain_txn_poc_receipts_v2
                                     end,
                     case blockchain_utils:find_txn(Block, RequestFilter) of
                         [] ->

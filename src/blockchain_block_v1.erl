@@ -81,7 +81,7 @@ new(#{prev_hash := PrevHash,
       seen_votes := Votes,
       bba_completion := Completion,
       poc_keys := PocKeys } = Map) ->
-    lager:info("*** new block with poc keys ~p",[PocKeys]),
+    lager:debug("*** new block with poc keys ~p",[PocKeys]),
     #blockchain_block_v1_pb{
        prev_hash = PrevHash,
        height = Height,

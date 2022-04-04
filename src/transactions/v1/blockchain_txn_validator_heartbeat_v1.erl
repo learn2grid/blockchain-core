@@ -175,9 +175,14 @@ absorb(Txn, Chain) ->
                 true ->
                     ok;
                 false ->
-                    case application:get_env(blockchain, poc_mgr_mod) of
-                        {ok, POCMgrMod} ->
-                            POCMgrMod:save_poc_key_proposals(Validator, POCKeyProposals, TxnHeight);
+                    case blockchain:config(poc_challenger_type, Ledger) of
+                        {ok, validator} ->
+                            case application:get_env(blockchain, poc_mgr_mod) of
+                                {ok, POCMgrMod} ->
+                                    POCMgrMod:save_poc_key_proposals(Validator, POCKeyProposals, TxnHeight);
+                                _ ->
+                                    ok
+                            end;
                         _ ->
                             ok
                     end,
@@ -186,7 +191,7 @@ absorb(Txn, Chain) ->
                     %% and thus wont be selected for POC
                     %% to get on this reactivated list the GW must have connected
                     %% to a validator over GRPC and subscribed to the poc stream
-                    %% as such it have maybe come back to life
+                    %% as such it may have maybe come back to life
                     %% so update it lasts activity tracking and allow it to be
                     %% reselected for POC
                     case blockchain:config(poc_activity_filter_enabled, Ledger) of
@@ -230,7 +235,7 @@ reactivate_gws(GWAddrs, Height, Ledger) ->
                 {error, _} ->
                     {error, no_active_gateway};
                 {ok, Gw0} ->
-                    lager:info("reactivating gw at height ~p for gateway ~p", [Height, GW]),
+                    lager:debug("reactivating gw at height ~p for gateway ~p", [Height, GW]),
                     Gw1 = blockchain_ledger_gateway_v2:last_poc_challenge(Height+1, Gw0),
                     ok = blockchain_ledger_v1:update_gateway(Gw0, Gw1, GW, Ledger)
             end
