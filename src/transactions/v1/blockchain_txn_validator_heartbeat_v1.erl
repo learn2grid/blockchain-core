@@ -225,7 +225,9 @@ to_json(Txn, _Opts) ->
       address => ?BIN_TO_B58(address(Txn)),
       height => height(Txn),
       signature => ?BIN_TO_B64(signature(Txn)),
-      version => version(Txn)
+      version => version(Txn),
+      poc_key_proposals => [?BIN_TO_B64(K) || K <- poc_key_proposals(Txn)],
+      reactivated_gws => [?BIN_TO_B58(GW) || GW <- reactivated_gws(Txn)]
      }.
 
 reactivate_gws(GWAddrs, Height, Ledger) ->
@@ -247,7 +249,7 @@ reactivate_gws(GWAddrs, Height, Ledger) ->
 -ifdef(TEST).
 
 to_json_test() ->
-    Tx = new(<<"validator_address">>, 20000, 1),
+    Tx = new(<<"validator_address">>, 20000, 1, [<<"poc_key_proposal">>], [<<"reactivated_gateway_addr1">>]),
     Json = to_json(Tx, []),
     ?assertEqual(lists:sort(maps:keys(Json)),
                  lists:sort([type, hash] ++ record_info(fields, blockchain_txn_validator_heartbeat_v1_pb))).
