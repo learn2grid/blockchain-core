@@ -446,11 +446,11 @@ wrap_vote({Idx, Vector}) ->
 unwrap_vote(#blockchain_seen_vote_v1_pb{index = Idx, vector = Vector}) ->
     {Idx, Vector}.
 
--spec wrap_poc_key({libp2p_crypto:pub_key_bin(), binary()}) -> #blockchain_poc_key_pb{}.
+-spec wrap_poc_key({libp2p_crypto:pubkey_bin(), binary()}) -> #blockchain_poc_key_pb{}.
 wrap_poc_key({Address, Key}) ->
     #blockchain_poc_key_pb{address = Address, key = Key}.
 
--spec unwrap_poc_key(#blockchain_poc_key_pb{}) -> {libp2p_crypto:pub_key_bin(), binary()}.
+-spec unwrap_poc_key(#blockchain_poc_key_pb{}) -> {libp2p_crypto:pubkey_bin(), binary()}.
 unwrap_poc_key(#blockchain_poc_key_pb{address = Address, key = Key}) ->
     {Address, Key}.
 
