@@ -2091,7 +2091,7 @@ process_poc_keys(_Block, 1, _BlockHash, _Ledger) ->
 process_poc_keys(Block, BlockHeight, BlockHash, Ledger) ->
     %% we need to update the ledger with public poc data
     %% based on the blocks poc ephemeral keys
-    %% these will be a prop with tuples: {MemberPosInCG :: Integer, PocKeyHash :: binary()}
+    %% these will be a prop with tuples: {ChallengerAddr :: binary(), PocKeyHash :: binary()}
     case blockchain:config(?poc_challenger_type, Ledger) of
         {ok, validator} ->
             BlockPocEphemeralKeys = blockchain_block_v1:poc_keys(Block),
