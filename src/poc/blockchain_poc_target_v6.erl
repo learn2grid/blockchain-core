@@ -2,9 +2,9 @@
 %%% @doc blockchain_poc_target_v6 implementation.
 %%%
 %%% The targeting mechanism is based on the following conditions:
-%%% - Deterministically identify a target region based on public key
+%%% - Deterministically identify a target hex based on public key
 %%% - Deterministically select a challengee from target region based on private key
-%%%
+%%% - v6 utilises h3dex for more efficient targeting and GC
 %%%-----------------------------------------------------------------------------
 -module(blockchain_poc_target_v6).
 
@@ -57,7 +57,7 @@ gateways_for_zone(
 
     case filter(AddrList, Ledger, Height, Vars) of
         FilteredList when length(FilteredList) >= 1 ->
-            lager:info("*** filtered gateways for hex ~p: ~p", [Hex, FilteredList]),
+            lager:debug("*** filtered gateways for hex ~p: ~p", [Hex, FilteredList]),
             {ok, FilteredList};
         _ ->
             lager:debug("*** failed to find gateways for hex ~p, trying again", [Hex]),

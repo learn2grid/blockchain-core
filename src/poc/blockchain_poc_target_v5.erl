@@ -2,7 +2,7 @@
 %%% @doc blockchain_poc_target_v5 implementation.
 %%%
 %%% The targeting mechanism is based on the following conditions:
-%%% - Deterministically i dentify a target region based on public key
+%%% - Deterministically identify a target hex based on public key
 %%% - Deterministically select a challengee from target region based on private key
 %%%
 %%%-----------------------------------------------------------------------------

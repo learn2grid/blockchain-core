@@ -2206,6 +2206,7 @@ maybe_gc_pocs(Chain, Ledger) ->
         _ ->
             maybe_gc_pocs(Chain, Ledger, undefined)
     end.
+
 maybe_gc_pocs(_Chain, Ledger, validator) ->
     %% iterate over the public POCs,
     %% delete any which are beyond the lifespan
