@@ -379,8 +379,7 @@ calculate_delta(Txn, Chain) ->
     end.
 
 -spec poc_particpants(Txn :: txn_poc_receipts(),
-                      Chain :: blockchain:blockchain()) ->
-    {[libp2p_crypto:pubkey_bin()], [blockchain_poc_witness_v1:poc_witness()]}.
+                      Chain :: blockchain:blockchain()) -> [libp2p_crypto:pubkey_bin()].
 poc_particpants(Txn, Chain) ->
     Ledger = blockchain:ledger(Chain),
     Path = blockchain_txn_poc_receipts_v2:path(Txn),
