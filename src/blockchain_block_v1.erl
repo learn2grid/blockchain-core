@@ -47,6 +47,9 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
+-type poc_key() :: {libp2p_crypto:pubkey_bin(), binary()}.
+-type poc_keys() :: [poc_key()].
+
 -type block() :: #blockchain_block_v1_pb{}.
 -type block_map() :: #{prev_hash => binary(),
                        height => non_neg_integer(),
@@ -60,10 +63,10 @@
                        seen_votes => [{pos_integer(), binary()}],
                        bba_completion => binary(),
                        snapshot_hash => binary(),
-                       poc_keys => [any()]
+                       poc_keys => poc_keys()
                       }.
 
--export_type([block/0, block_map/0]).
+-export_type([block/0, block_map/0, poc_key/0, poc_keys/0]).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -196,7 +199,7 @@ bba_completion(Block) ->
 snapshot_hash(Block) ->
     Block#blockchain_block_v1_pb.snapshot_hash.
 
--spec poc_keys(block()) -> [any()].
+-spec poc_keys(block()) -> poc_keys().
 poc_keys(Block) ->
     [unwrap_poc_key(V) || V <- Block#blockchain_block_v1_pb.poc_keys].
 %%--------------------------------------------------------------------
